@@ -36,3 +36,29 @@ class Block:
             'data': self.data,
             'nonce': self.nonce
         })
+
+
+class Node:
+    blocks = []
+
+    def __init__(self, server_id):
+        self.server_id = server_id
+        self.block_index = None
+
+    def get_input_block(self, received_block):
+        input_block = json.loads(received_block)
+        input_index = int(input_block['index'])
+        if input_index == 0:
+            self.blocks.append(received_block)
+            self.block_index = 0
+            print(f'GENESIS:' + str(input_block))
+            return True
+        blocks_array_object = json.loads(self.blocks[-1])
+        last_block_index = blocks_array_object['index']
+        if input_index > last_block_index:
+            self.blocks.append(received_block)
+            self.block_index = input_index
+            if self.server_id != input_block['service_id']:
+                print(f'Service{self.server_id} received:' + str(input_block))
+            return True
+        return False
