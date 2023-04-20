@@ -2,7 +2,11 @@ import json
 import random
 import string
 from hashlib import sha256
-
+from flask import Flask, request
+import time
+import threading
+import logging
+import grequests
 
 class Block:
     def __init__(self, service_id, index, prev_hash):
@@ -62,3 +66,49 @@ class Node:
                 print(f'Service{self.server_id} received:' + str(input_block))
             return True
         return False
+
+
+def start(service):
+    current_service = Flask(__name__)
+    current_node = Node(service)
+    host = 'localhost'
+    if service == 1:
+        port1, port2, port3 = 5000, 5001, 5002
+    elif service == 2:
+        port1, port2, port3 = 5001, 5000, 5002
+    else:
+        port1, port2, port3 = 5002, 5000, 5001
+    logging.getLogger('werkzeug').disabled = True
+    servers_urls = [f'http://{host}:{port1}/', f'http://{host}:{port2}/', f'http://{host}:{port3}/']
+
+    def create_new_blocks():
+        while True:
+            if len(current_node.blocks) != 0:
+                last_block = json.loads(current_node.blocks[-1])
+                prev_hash = last_block['hash']
+                new_block = Block(current_node.server_id, current_node.block_index + 1, prev_hash)
+                if new_block.index > current_node.block_index:
+                    rst = (grequests.post(u, json=new_block.get_block_data()) for u in servers_urls)
+                    grequests.map(rst)
+            time.sleep(0.2)
+
+    @current_service.route("/", methods=['POST'])
+    def input_blocks():
+        received_block = request.get_json()
+        check_blocks = current_node.get_input_block(received_block)
+        if not check_blocks:
+            return "block_handler_flag Error"
+        return "We received new Block"
+
+    current_server = threading.Thread(target=current_service.run, args=(host, port1))
+    current_server_generator = threading.Thread(target=create_new_blocks)
+    current_server.setDaemon(False)
+    current_server_generator.setDaemon(False)
+    current_server.start()
+    current_server_generator.start()
+
+    if service == 1:
+        time.sleep(1)
+        genesis = Block(1, 0, 'None')
+        rs = (grequests.post(u, json=genesis.get_block_data()) for u in servers_urls)
+        grequests.map(rs)
