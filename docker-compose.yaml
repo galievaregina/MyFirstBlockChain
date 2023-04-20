@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  service3:
+    image: first/blockchain
+    container_name: service3
+    network_mode: host
+    command: "3"
+    stdin_open: true
+    tty: true
+
+
+  service2:
+    image: first/blockchain
+    container_name: service2
+    network_mode: host
+    command: "2"
+    stdin_open: true
+    tty: true
+
+  service1:
+    image: first/blockchain
+    container_name: service1
+    network_mode: host
+    command: "1"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - service2
+      - service3
